@@ -2,8 +2,7 @@ import { SchedulingEngine } from './schedulingEngine'
 import { taskPriorityModel } from './taskPriorityModel'
 import { taskRecommender } from './taskRecommender'
 import { userService } from './userService'
-import { taskService } from './taskService'
-import { routineService } from './routineService'
+import { activityService } from './activityService'
 
 const DEFAULT_USER_STATE = {
   current_energy: 'medium',
@@ -110,27 +109,17 @@ export const timelineService = {
       }
       const userState = mapPreferencesToUserState(preferences)
       
-      // Get tasks (prioritized)
-      const allTasks = await taskService.getTasks()
-      const prioritizedTasks = prioritizeTasksForTimeline(allTasks, userState)
+      // Get canonical Activities for the Decision Engine while legacy UI services continue migrating.
+      const activities = await activityService.getActivities()
+      const prioritizedTasks = prioritizeTasksForTimeline(activities, userState)
       
-      // Get routines
-      const routines = await routineService.getRoutines()
-      
-      // Extract routine steps
-      const routineSteps = routines
-        .filter(r => r.is_active)
-        .flatMap(routine => 
-          (routine.routine_steps || []).map(step => ({
-            ...step,
-            repeat_pattern: routine.repeat_pattern
-          }))
-        )
+      // Extract routine-step Activities for the scheduler's routine input.
+      const routineSteps = activities.filter(activity => activity.type === 'routine_step')
       
       // Create scheduling engine
       const scheduler = new SchedulingEngine(
         preferences,
-        prioritizedTasks.filter(t => !t.completed),
+        prioritizedTasks.filter(activity => !activity.completed && activity.type !== 'routine_step'),
         routineSteps,
         [] // events
       )
