@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase'
+import { supabase, isSupabaseEnabled } from '../config/supabase'
 import { taskService } from './taskService'
 
 // Mock data storage keys
@@ -43,7 +43,7 @@ const setMockSubtasks = (subtasks) => {
 }
 
 const isSupabaseConfigured = () => {
-  return supabase && typeof supabase.from === 'function'
+  return isSupabaseEnabled
 }
 
 export const projectService = {

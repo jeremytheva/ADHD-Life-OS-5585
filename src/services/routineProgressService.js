@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase'
+import { supabase, isSupabaseEnabled } from '../config/supabase'
 
 // Mock storage keys
 const MOCK_PROGRESS_KEY = 'adhd_lifeos_routine_progress'
@@ -42,7 +42,7 @@ const setMockHistory = (history) => {
 }
 
 const isSupabaseConfigured = () => {
-  return supabase && typeof supabase.from === 'function'
+  return isSupabaseEnabled
 }
 
 export const routineProgressService = {

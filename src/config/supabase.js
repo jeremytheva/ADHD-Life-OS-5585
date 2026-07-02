@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const placeholderAnonKey = 'your-supabase-anon-key';
 
 // Helper to check if a string is a valid URL
 const isValidUrl = (urlString) => {
@@ -12,9 +13,16 @@ const isValidUrl = (urlString) => {
   }
 };
 
+const isSupabaseEnabled = Boolean(
+  supabaseUrl &&
+    isValidUrl(supabaseUrl) &&
+    supabaseAnonKey &&
+    supabaseAnonKey !== placeholderAnonKey
+);
+
 let supabase;
 
-if (supabaseUrl && isValidUrl(supabaseUrl) && supabaseAnonKey && supabaseAnonKey !== 'your-supabase-anon-key') {
+if (isSupabaseEnabled) {
   supabase = createClient(supabaseUrl, supabaseAnonKey);
 } else {
   console.warn('Supabase credentials missing or invalid. App will run in limited mode.');
@@ -49,4 +57,4 @@ if (supabaseUrl && isValidUrl(supabaseUrl) && supabaseAnonKey && supabaseAnonKey
   };
 }
 
-export { supabase };
+export { supabase, isSupabaseEnabled };

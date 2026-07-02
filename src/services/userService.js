@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase';
+import { supabase, isSupabaseEnabled } from '../config/supabase';
 
 // Mock data storage
 const MOCK_PREFERENCES_KEY = 'adhd_lifeos_preferences';
@@ -29,7 +29,7 @@ const setMockPreferences = (prefs) => {
 
 // Check if Supabase is configured
 const isSupabaseConfigured = () => {
-  return supabase && typeof supabase.from === 'function';
+  return isSupabaseEnabled;
 };
 
 export const userService = {

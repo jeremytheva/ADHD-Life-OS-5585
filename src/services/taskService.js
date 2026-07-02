@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase'
+import { supabase, isSupabaseEnabled } from '../config/supabase'
 
 // Mock data storage for testing
 const MOCK_STORAGE_KEY = 'adhd_lifeos_tasks'
@@ -30,7 +30,7 @@ const setMockTasks = (tasks) => {
 
 // Check if Supabase is properly configured
 const isSupabaseConfigured = () => {
-  return supabase && typeof supabase.from === 'function'
+  return isSupabaseEnabled
 }
 
 export const taskService = {

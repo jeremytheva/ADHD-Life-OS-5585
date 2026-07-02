@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase'
+import { supabase, isSupabaseEnabled } from '../config/supabase'
 import { addDays, addWeeks, addMonths, startOfDay, parseISO } from 'date-fns'
 
 // Mock storage keys
@@ -43,7 +43,7 @@ const setMockCompletions = (completions) => {
 }
 
 const isSupabaseConfigured = () => {
-  return supabase && typeof supabase.from === 'function'
+  return isSupabaseEnabled
 }
 
 // Frequency calculation helpers
