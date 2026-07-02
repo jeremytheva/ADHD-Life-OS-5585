@@ -53,12 +53,12 @@ const TaskList = () => {
       const taskFilter = {
         status: filter === 'completed' ? 'completed' : 'active',
         timeframe: filter,
-        mode: currentMode.id !== 'all' ? currentMode.id : null
+        ...(currentMode.id !== 'all' ? { mode: currentMode.id } : {})
       }
 
       const data = await taskService.getTasks(taskFilter)
       
-      // Apply mode filtering
+      // Keep display-level mode filtering for cross-entity consistency.
       const filteredData = filterByMode(data, 'task')
       
       const engine = new PrioritizationEngine(preferences)

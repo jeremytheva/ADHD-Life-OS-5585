@@ -51,19 +51,19 @@ const normalizeDateString = (dateValue) => {
   return String(dateValue).split('T')[0]
 }
 
-const normalizeTaskFilter = (filter = {}) => {
-  if (typeof filter === 'string') {
+const normalizeTaskFilter = (filters = {}) => {
+  if (typeof filters === 'string') {
     return {
-      status: filter === 'completed' ? 'completed' : 'active',
-      timeframe: filter
+      status: filters === 'completed' ? 'completed' : 'active',
+      timeframe: filters
     }
   }
 
   return {
-    status: filter.status || 'active',
-    timeframe: filter.timeframe || 'all',
-    mode: filter.mode || null,
-    project_id: filter.project_id || null
+    status: filters.status || 'active',
+    timeframe: filters.timeframe || 'all',
+    mode: filters.mode || null,
+    project_id: filters.project_id || null
   }
 }
 
@@ -76,19 +76,19 @@ const isTaskOverdue = (task) => {
   return isValid(dueDate) && isBefore(dueDate, startOfToday())
 }
 
-const filterMockTasks = (tasks, filter) => {
+const filterMockTasks = (tasks, filters) => {
   const today = toLocalDateString()
 
   return tasks.filter((task) => {
     const dueDate = normalizeDateString(task.due_date)
     const completed = isTaskCompleted(task)
 
-    if (filter.status === 'active' && completed) return false
-    if (filter.status === 'completed' && !completed) return false
-    if (filter.mode && task.mode !== filter.mode) return false
-    if (filter.project_id && task.project_id !== filter.project_id) return false
+    if (filters.status === 'active' && completed) return false
+    if (filters.status === 'completed' && !completed) return false
+    if (filters.mode && task.mode !== filters.mode) return false
+    if (filters.project_id && task.project_id !== filters.project_id) return false
 
-    switch (filter.timeframe) {
+    switch (filters.timeframe) {
       case 'today':
         return dueDate === today
       case 'upcoming':
@@ -104,25 +104,25 @@ const filterMockTasks = (tasks, filter) => {
   })
 }
 
-const applyTaskFilterQuery = (query, filter) => {
+const applyTaskFilterQuery = (query, filters) => {
   const today = toLocalDateString()
   let filteredQuery = query
 
-  if (filter.status === 'active') {
+  if (filters.status === 'active') {
     filteredQuery = filteredQuery.eq('completed', false)
-  } else if (filter.status === 'completed') {
+  } else if (filters.status === 'completed') {
     filteredQuery = filteredQuery.eq('completed', true)
   }
 
-  if (filter.mode) {
-    filteredQuery = filteredQuery.eq('mode', filter.mode)
+  if (filters.mode) {
+    filteredQuery = filteredQuery.eq('mode', filters.mode)
   }
 
-  if (filter.project_id) {
-    filteredQuery = filteredQuery.eq('project_id', filter.project_id)
+  if (filters.project_id) {
+    filteredQuery = filteredQuery.eq('project_id', filters.project_id)
   }
 
-  switch (filter.timeframe) {
+  switch (filters.timeframe) {
     case 'today':
       return filteredQuery.eq('due_date', today)
     case 'upcoming':
