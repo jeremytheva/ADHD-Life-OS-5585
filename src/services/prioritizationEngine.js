@@ -248,7 +248,10 @@ export class PrioritizationEngine {
       medium: prioritized.filter(t => t.priorityLevel === 'medium').length,
       low: prioritized.filter(t => t.priorityLevel === 'low').length,
       overdue: prioritized.filter(t => 
-        t.due_date && isPast(parseISO(t.due_date)) && !isToday(parseISO(t.due_date))
+        !t.completed &&
+        t.due_date &&
+        isPast(parseISO(t.due_date)) &&
+        !isToday(parseISO(t.due_date))
       ).length,
       dueToday: prioritized.filter(t => 
         t.due_date && isToday(parseISO(t.due_date))
