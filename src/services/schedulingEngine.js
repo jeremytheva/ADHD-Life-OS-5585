@@ -101,12 +101,19 @@ export class SchedulingEngine {
   placeFlexibleTasks(date) {
     const dateStr = format(date, 'yyyy-MM-dd')
     
-    // Sort tasks by priority (earliest due + shortest duration)
+    // Sort tasks by priority while preserving due-date and duration fallbacks
     const sortedTasks = [...this.tasks].sort((a, b) => {
+      const priorityDiff = (b.priority_score || b.priorityScore || 0) - (a.priority_score || a.priorityScore || 0)
+      if (priorityDiff !== 0) return priorityDiff
+
       if (a.due_date && b.due_date) {
         const dueDiff = new Date(a.due_date) - new Date(b.due_date)
         if (dueDiff !== 0) return dueDiff
       }
+
+      if (a.due_date) return -1
+      if (b.due_date) return 1
+
       return (a.estimated_duration || 60) - (b.estimated_duration || 60)
     })
 
