@@ -33,49 +33,120 @@ const isSupabaseConfigured = () => {
   return isSupabaseEnabled
 }
 
+const toLocalDateString = (date = new Date()) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const normalizeDateString = (dateValue) => {
+  if (!dateValue) return null
+
+  if (dateValue instanceof Date) {
+    return toLocalDateString(dateValue)
+  }
+
+  return String(dateValue).split('T')[0]
+}
+
+const normalizeTaskFilter = (filter = {}) => {
+  if (typeof filter === 'string') {
+    return {
+      status: filter === 'completed' ? 'completed' : 'active',
+      timeframe: filter
+    }
+  }
+
+  return {
+    status: filter.status || 'active',
+    timeframe: filter.timeframe || 'all',
+    mode: filter.mode || null,
+    project_id: filter.project_id || null
+  }
+}
+
+const isTaskCompleted = (task) => task.completed || task.status === 'completed'
+
+const filterMockTasks = (tasks, filter) => {
+  const today = toLocalDateString()
+
+  return tasks.filter((task) => {
+    const dueDate = normalizeDateString(task.due_date)
+    const completed = isTaskCompleted(task)
+
+    if (filter.status === 'active' && completed) return false
+    if (filter.status === 'completed' && !completed) return false
+    if (filter.mode && task.mode !== filter.mode) return false
+    if (filter.project_id && task.project_id !== filter.project_id) return false
+
+    switch (filter.timeframe) {
+      case 'today':
+        return dueDate === today
+      case 'upcoming':
+        return dueDate > today
+      case 'completed':
+        return completed
+      case 'overdue':
+        return dueDate && dueDate < today && !completed
+      case 'all':
+      default:
+        return true
+    }
+  })
+}
+
+const applyTaskFilterQuery = (query, filter) => {
+  const today = toLocalDateString()
+  let filteredQuery = query
+
+  if (filter.status === 'active') {
+    filteredQuery = filteredQuery.eq('completed', false)
+  } else if (filter.status === 'completed') {
+    filteredQuery = filteredQuery.eq('completed', true)
+  }
+
+  if (filter.mode) {
+    filteredQuery = filteredQuery.eq('mode', filter.mode)
+  }
+
+  if (filter.project_id) {
+    filteredQuery = filteredQuery.eq('project_id', filter.project_id)
+  }
+
+  switch (filter.timeframe) {
+    case 'today':
+      return filteredQuery.eq('due_date', today)
+    case 'upcoming':
+      return filteredQuery.gt('due_date', today)
+    case 'completed':
+      return filteredQuery.eq('completed', true)
+    case 'overdue':
+      return filteredQuery.lt('due_date', today).eq('completed', false)
+    case 'all':
+    default:
+      return filteredQuery
+  }
+}
+
 export const taskService = {
-  async getTasks(filter = 'all') {
+  async getTasks(filter = {}) {
     const userId = getCurrentUserId()
     if (!userId) return []
+
+    const normalizedFilter = normalizeTaskFilter(filter)
 
     if (!isSupabaseConfigured()) {
       // Use mock data
       const allTasks = getMockTasks().filter((task) => task.user_id === userId)
-
-      if (filter === 'today') {
-        const today = new Date().toISOString().split('T')[0]
-        return allTasks.filter(
-          (task) =>
-            task.due_date &&
-            task.due_date.startsWith(today) &&
-            !task.completed
-        )
-      } else if (filter === 'upcoming') {
-        const today = new Date().toISOString().split('T')[0]
-        return allTasks.filter(
-          (task) =>
-            task.due_date && task.due_date > today && !task.completed
-        )
-      }
-
-      return allTasks.filter((task) => !task.completed)
+      return filterMockTasks(allTasks, normalizedFilter)
     }
 
     // Use Supabase
-    let query = supabase
-      .from('tasks')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('completed', false)
-
-    if (filter === 'today') {
-      const today = new Date().toISOString().split('T')[0]
-      query = query.gte('due_date', today).lt('due_date', `${today}T23:59:59`)
-    } else if (filter === 'upcoming') {
-      const tomorrow = new Date()
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      query = query.gte('due_date', tomorrow.toISOString())
-    }
+    const query = applyTaskFilterQuery(
+      supabase.from('tasks').select('*').eq('user_id', userId),
+      normalizedFilter
+    )
 
     const { data, error } = await query.order('due_date', { ascending: true })
 

@@ -50,14 +50,13 @@ const TaskList = () => {
   const loadTasks = async () => {
     try {
       setLoading(true)
-      const filters = {}
-      
-      if (filter === 'today') {
-        const today = new Date().toISOString().split('T')[0]
-        filters.due_date = today
+      const taskFilter = {
+        status: filter === 'completed' ? 'completed' : 'active',
+        timeframe: filter,
+        mode: currentMode.id !== 'all' ? currentMode.id : null
       }
 
-      const data = await taskService.getTasks(filters)
+      const data = await taskService.getTasks(taskFilter)
       
       // Apply mode filtering
       const filteredData = filterByMode(data, 'task')
@@ -166,7 +165,9 @@ const TaskList = () => {
   const filters = [
     { key: 'all', label: 'All Tasks' },
     { key: 'today', label: 'Due Today' },
-    { key: 'upcoming', label: 'Upcoming' }
+    { key: 'upcoming', label: 'Upcoming' },
+    { key: 'overdue', label: 'Overdue' },
+    { key: 'completed', label: 'Completed' }
   ]
 
   const sortOptions = [
