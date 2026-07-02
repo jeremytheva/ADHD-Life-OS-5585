@@ -176,6 +176,7 @@ export const taskService = {
       is_essential: taskData.is_essential || false,
       completed: false,
       mode: taskData.mode || null,
+      project_id: taskData.project_id || null,
       category: taskData.category || null,
       tags: taskData.tags || [],
       created_at: new Date().toISOString(),

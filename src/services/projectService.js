@@ -55,11 +55,11 @@ export const projectService = {
       const projects = getMockProjects().filter(p => p.user_id === userId)
       const subtasks = getMockSubtasks()
       
-      // Get tasks for these projects
-      const allTasks = await taskService.getTasks()
-      
-      return projects.map(project => {
-        const projectTasks = allTasks.filter(t => t.project_id === project.id)
+      return Promise.all(projects.map(async project => {
+        const projectTasks = await taskService.getTasks({
+          project_id: project.id,
+          status: 'all'
+        })
         // Enrich tasks with subtasks
         const tasksWithSubtasks = projectTasks.map(task => ({
           ...task,
@@ -70,7 +70,7 @@ export const projectService = {
           ...project,
           tasks: tasksWithSubtasks
         }
-      })
+      }))
     }
 
     // Supabase implementation
