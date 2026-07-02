@@ -1,3 +1,4 @@
+import { isBefore, isValid, parseISO, startOfToday } from 'date-fns'
 import { supabase, isSupabaseEnabled } from '../config/supabase'
 
 // Mock data storage for testing
@@ -68,6 +69,13 @@ const normalizeTaskFilter = (filter = {}) => {
 
 const isTaskCompleted = (task) => task.completed || task.status === 'completed'
 
+const isTaskOverdue = (task) => {
+  if (!task.due_date || isTaskCompleted(task)) return false
+
+  const dueDate = parseISO(normalizeDateString(task.due_date))
+  return isValid(dueDate) && isBefore(dueDate, startOfToday())
+}
+
 const filterMockTasks = (tasks, filter) => {
   const today = toLocalDateString()
 
@@ -88,7 +96,7 @@ const filterMockTasks = (tasks, filter) => {
       case 'completed':
         return completed
       case 'overdue':
-        return dueDate && dueDate < today && !completed
+        return isTaskOverdue(task)
       case 'all':
       default:
         return true
@@ -120,9 +128,9 @@ const applyTaskFilterQuery = (query, filter) => {
     case 'upcoming':
       return filteredQuery.gt('due_date', today)
     case 'completed':
-      return filteredQuery.eq('completed', true)
+      return filteredQuery
     case 'overdue':
-      return filteredQuery.lt('due_date', today).eq('completed', false)
+      return filteredQuery.lt('due_date', today)
     case 'all':
     default:
       return filteredQuery

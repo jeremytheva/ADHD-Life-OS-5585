@@ -166,7 +166,7 @@ const TaskList = () => {
     { key: 'all', label: 'All Tasks' },
     { key: 'today', label: 'Due Today' },
     { key: 'upcoming', label: 'Upcoming' },
-    { key: 'overdue', label: 'Overdue' },
+    { key: 'overdue', label: 'Needs attention' },
     { key: 'completed', label: 'Completed' }
   ]
 
