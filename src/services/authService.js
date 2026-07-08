@@ -1,4 +1,9 @@
-// Mock authentication service for testing (no Supabase required)
+// Authentication service
+//
+// The default local mock keeps this demo app runnable without external
+// services. Set VITE_AUTH_PROVIDER=nocodebackend to send auth requests to the
+// same-origin /api/auth proxy. Keep NCB_SECRET_KEY in the server/runtime env
+// used by the proxy; never expose it as a VITE_* variable.
 
 // Mock user data
 const MOCK_USERS = {
@@ -31,6 +36,8 @@ const MOCK_USERS = {
 // Storage keys
 const STORAGE_KEY_USER = 'adhd_lifeos_current_user';
 const STORAGE_KEY_SESSION = 'adhd_lifeos_session';
+const AUTH_PROVIDER = import.meta.env.VITE_AUTH_PROVIDER ?? 'mock';
+const AUTH_PROXY_URL = import.meta.env.VITE_AUTH_PROXY_URL ?? '/api/auth';
 
 // Helper to get stored user
 const getStoredUser = () => {
@@ -62,8 +69,100 @@ const notifyAuthChange = (event, user) => {
   });
 };
 
+const normalizeUser = (payload) => payload?.user ?? payload?.data?.user ?? payload?.data ?? payload;
+
+const requestAuthProxy = async (path, options = {}) => {
+  const response = await fetch(`${AUTH_PROXY_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers
+    }
+  });
+
+  const contentType = response.headers.get('content-type') ?? '';
+  const payload = contentType.includes('application/json')
+    ? await response.json()
+    : await response.text();
+
+  if (!response.ok) {
+    const message = typeof payload === 'string'
+      ? payload
+      : payload?.message ?? payload?.error ?? 'Authentication request failed';
+    throw new Error(message);
+  }
+
+  return payload;
+};
+
+const ncbAuthService = {
+  async signUp(email, password) {
+    const payload = await requestAuthProxy('/signup', {
+      method: 'POST',
+      body: JSON.stringify({ email, password })
+    });
+    const user = normalizeUser(payload);
+    setStoredUser(user);
+    notifyAuthChange('SIGNED_IN', user);
+    return { user, session: payload?.session ?? { user } };
+  },
+
+  async signIn(email, password) {
+    const payload = await requestAuthProxy('/signin', {
+      method: 'POST',
+      body: JSON.stringify({ email, password })
+    });
+    const user = normalizeUser(payload);
+    setStoredUser(user);
+    notifyAuthChange('SIGNED_IN', user);
+    return { user, session: payload?.session ?? { user } };
+  },
+
+  async signOut() {
+    try {
+      await requestAuthProxy('/signout', { method: 'POST' });
+    } finally {
+      setStoredUser(null);
+      notifyAuthChange('SIGNED_OUT', null);
+    }
+
+    return { error: null };
+  },
+
+  async getCurrentUser() {
+    const storedUser = getStoredUser();
+
+    if (!storedUser) {
+      return null;
+    }
+
+    try {
+      const payload = await requestAuthProxy('/me');
+      const user = normalizeUser(payload);
+      setStoredUser(user);
+      return user;
+    } catch {
+      return storedUser;
+    }
+  },
+
+  onAuthStateChange(callback) {
+    authListeners.push(callback);
+
+    return {
+      data: {
+        subscription: {
+          unsubscribe: () => {
+            authListeners = authListeners.filter(cb => cb !== callback);
+          }
+        }
+      }
+    };
+  }
+};
+
 // Mock auth service
-export const authService = {
+const mockAuthService = {
   async signUp(email, password) {
     // For testing, treat signup as signin
     return this.signIn(email, password);
@@ -89,7 +188,6 @@ export const authService = {
   },
 
   async signOut() {
-    const user = getStoredUser();
     setStoredUser(null);
     
     // Notify listeners
@@ -117,3 +215,5 @@ export const authService = {
     };
   }
 };
+
+export const authService = AUTH_PROVIDER === 'nocodebackend' ? ncbAuthService : mockAuthService;

@@ -159,6 +159,19 @@ VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 ```
 
+### Optional NoCodeBackend auth proxy
+
+This project remains on Vite. Vite does not serve Next.js `app/api` routes, so NoCodeBackend auth requests should go through the same-origin `/api/auth` proxy instead of calling NoCodeBackend directly from browser code.
+
+For local development, `vite.config.js` proxies `/api/auth/*` to `NCB_API_BASE_URL` and injects `NCB_SECRET_KEY` from the server-side Vite runtime environment. For production on Vercel, `api/auth/[...path].js` provides the same `/api/auth/*` endpoint. Keep `NCB_SECRET_KEY` only in server/runtime environment variables; do not create a `VITE_NCB_SECRET_KEY`.
+
+```env
+VITE_AUTH_PROVIDER=nocodebackend
+VITE_AUTH_PROXY_URL=/api/auth
+NCB_API_BASE_URL=https://your-nocodebackend-api.example.com
+NCB_SECRET_KEY=your-server-only-secret-key
+```
+
 4. **Start development server**
 ```bash
 npm run dev
