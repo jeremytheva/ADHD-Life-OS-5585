@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ModeProvider } from './contexts/ModeContext'
 import Layout from './components/Layout'
+import NCBAuth from './components/auth/NCBAuth'
 import ProfileSelector from './components/auth/ProfileSelector'
 import OnboardingFlow from './components/onboarding/OnboardingFlow'
 import { onboardingService } from './services/onboardingService'
@@ -18,6 +19,7 @@ import Projects from './pages/Projects'
 
 const AppRoutes = () => {
   const { user, loading } = useAuth()
+  const location = useLocation()
   const [checkingOnboarding, setCheckingOnboarding] = useState(true)
   const [showOnboarding, setShowOnboarding] = useState(false)
 
@@ -45,7 +47,16 @@ const AppRoutes = () => {
   }
 
   if (!user) {
-    return <ProfileSelector />
+    return (
+      <Routes>
+        <Route path="/login" element={<NCBAuth mode="login" />} />
+        <Route path="/register" element={<NCBAuth mode="register" />} />
+        {import.meta.env.DEV && (
+          <Route path="/dev-profiles" element={<ProfileSelector />} />
+        )}
+        <Route path="*" element={<Navigate to="/login" replace state={{ from: location }} />} />
+      </Routes>
+    )
   }
 
   if (showOnboarding) {
@@ -60,6 +71,11 @@ const AppRoutes = () => {
   return (
     <Layout>
       <Routes>
+        <Route path="/login" element={<Navigate to="/" replace />} />
+        <Route path="/register" element={<Navigate to="/" replace />} />
+        {import.meta.env.DEV && (
+          <Route path="/dev-profiles" element={<ProfileSelector />} />
+        )}
         <Route path="/" element={<TodayView />} />
         <Route path="/tasks" element={<TaskList />} />
         <Route path="/routines" element={<RoutineList />} />
