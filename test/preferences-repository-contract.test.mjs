@@ -4,6 +4,7 @@ import test from 'node:test'
 
 const repository = await readFile('src/domain/preferences/repository.js', 'utf8')
 const settings = await readFile('src/components/settings/Settings.jsx', 'utf8')
+const onboardingService = await readFile('src/services/onboardingService.js', 'utf8')
 
 test('preferences domain repository exposes canonical validated methods', () => {
   assert.match(repository, /export const getUserPreferences = async \(user\)/)
@@ -19,4 +20,9 @@ test('Settings supplies authenticated user context and gives retry actions for p
   assert.match(settings, /updateUserPreferences\(user, updates\)/)
   assert.match(settings, /Retry loading/)
   assert.match(settings, /Retry saving/)
+})
+
+test('onboarding storage does not expose a competing preferences repository API', () => {
+  assert.match(onboardingService, /getAppliedOnboardingPreferences\(\)/)
+  assert.doesNotMatch(onboardingService, /getUserPreferences\(\)/)
 })
