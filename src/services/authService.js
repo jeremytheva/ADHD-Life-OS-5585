@@ -14,7 +14,7 @@ class AuthProxyError extends Error {
 // server/runtime can attach the NoCodeBackend secret key without exposing it to
 // client code. NoCodeBackend session cookies are included on every request.
 
-const AUTH_PROXY_URL = import.meta.env.VITE_AUTH_PROXY_URL ?? '/api/auth';
+const AUTH_PROXY_URL = import.meta.env.VITE_AUTH_PROXY_URL ?? '/api/ncb/auth';
 
 // Auth state change listeners
 let authListeners = [];
