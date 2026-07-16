@@ -1,6 +1,6 @@
 import { NoCodeBackendError } from './errors'
 
-const DATA_PROXY_URL = import.meta.env.VITE_DATA_PROXY_URL ?? '/api/data'
+const DATA_PROXY_URL = import.meta.env.VITE_DATA_PROXY_URL ?? '/api/ncb/data'
 
 const parsePayload = async (response) => {
   const contentType = response.headers.get('content-type') ?? ''

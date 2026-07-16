@@ -147,9 +147,9 @@ npm install
 cp .env.example .env.local
 ```
 
-`VITE_AUTH_PROXY_URL` and `VITE_DATA_PROXY_URL` default to same-origin endpoints. Configure `NCB_API_BASE_URL` and `NCB_SECRET_KEY` only in the server/runtime environment. Never expose `NCB_SECRET_KEY` through a `VITE_*` variable.
+`VITE_AUTH_PROXY_URL` and `VITE_DATA_PROXY_URL` default to `/api/ncb/auth` and `/api/ncb/data`. Configure `NCB_API_BASE_URL` and `NCB_SECRET_KEY` only in the server/runtime environment. Never expose `NCB_SECRET_KEY` through a `VITE_*` variable.
 
-The Vite development server proxies `/api/auth/*` and `/api/data/*`; Vercel deploys matching proxy handlers. Both forward authenticated browser requests to NoCodeBackend while keeping the secret server-side. Data endpoint failures are returned to callers as structured `NoCodeBackendError` values and are not replaced with local data.
+The Vite development server invokes the same allowlisted `/api/ncb/auth/*` and `/api/ncb/data/*` handlers used in deployment—there is no unrestricted development proxy. These handlers enforce same-origin CSRF protection, payload limits and Zod validation before forwarding a request to NoCodeBackend with server-only credentials. Data endpoint failures are returned to callers as structured `NoCodeBackendError` values and are not replaced with local data.
 
 4. **Start development server**
 ```bash
