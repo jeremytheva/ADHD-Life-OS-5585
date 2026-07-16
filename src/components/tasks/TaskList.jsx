@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import * as FiIcons from 'react-icons/fi'
 import SafeIcon from '../../common/SafeIcon'
 import { taskService } from '../../services/taskService'
-import { userService } from '../../services/userService'
+import { getUserPreferences } from '../../domain/preferences/repository'
 import { adhdPriorityService } from '../../services/adhdPriorityService'
 import { useMode } from '../../contexts/ModeContext'
+import { useAuth } from '../../contexts/AuthContext'
 import TaskCard from './TaskCard'
 import TaskForm from './TaskForm'
 import TaskLoadAnalysis from './TaskLoadAnalysis'
@@ -15,6 +16,7 @@ import TemplateLibrary from '../templates/TemplateLibrary'
 const { FiPlus, FiFilter, FiTrendingUp, FiBookOpen } = FiIcons
 
 const TaskList = () => {
+  const { user } = useAuth()
   const { currentMode, filterByMode, getModePreferences } = useMode()
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
@@ -29,8 +31,8 @@ const TaskList = () => {
   const modePrefs = getModePreferences(currentMode.id)
 
   useEffect(() => {
-    loadPreferences()
-  }, [])
+    if (user) loadPreferences()
+  }, [user])
 
   useEffect(() => {
     if (preferences) {
@@ -40,7 +42,7 @@ const TaskList = () => {
 
   const loadPreferences = async () => {
     try {
-      const prefs = await userService.getPreferences()
+      const prefs = await getUserPreferences(user)
       setPreferences(prefs)
     } catch (error) {
       console.error('Error loading preferences:', error)

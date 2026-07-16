@@ -1,7 +1,8 @@
 import { SchedulingEngine } from './schedulingEngine'
 import { taskPriorityModel } from './taskPriorityModel'
 import { taskRecommender } from './taskRecommender'
-import { userService } from './userService'
+import { getUserPreferences } from '../domain/preferences/repository'
+import { getCurrentUser } from './authStorage'
 import { activityService } from './activityService'
 
 const DEFAULT_USER_STATE = {
@@ -100,12 +101,12 @@ const prioritizeTasksForTimeline = (tasks = [], userState = {}) => {
 }
 
 export const timelineService = {
-  async getTimeline(date) {
+  async getTimeline(date, user = getCurrentUser()) {
     try {
       // Get user preferences
       const preferences = {
         ...DEFAULT_DAY_SKELETON,
-        ...(await userService.getPreferences())
+        ...(await getUserPreferences(user))
       }
       const userState = mapPreferencesToUserState(preferences)
       

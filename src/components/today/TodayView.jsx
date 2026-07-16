@@ -6,12 +6,14 @@ import SafeIcon from '../../common/SafeIcon'
 import { timelineService } from '../../services/timelineService'
 import { taskService } from '../../services/taskService'
 import { useMode } from '../../contexts/ModeContext'
+import { useAuth } from '../../contexts/AuthContext'
 import BlockCard from './BlockCard'
 import GamificationDashboard from '../gamification/GamificationDashboard'
 
 const { FiRefreshCw, FiAward } = FiIcons
 
 const TodayView = () => {
+  const { user } = useAuth()
   const { currentMode, filterByMode } = useMode()
   const [timeline, setTimeline] = useState({ blocks: [], unscheduledTasks: [] })
   const [loading, setLoading] = useState(true)
@@ -20,13 +22,13 @@ const TodayView = () => {
 
   useEffect(() => {
     loadTimeline()
-  }, [currentMode])
+  }, [currentMode, user])
 
   const loadTimeline = async () => {
     try {
       setLoading(true)
       const today = new Date()
-      const schedule = await timelineService.getTimeline(today)
+      const schedule = await timelineService.getTimeline(today, user)
       
       // Apply mode filtering to blocks and unscheduled tasks
       const filteredBlocks = currentMode.id === 'all' 
