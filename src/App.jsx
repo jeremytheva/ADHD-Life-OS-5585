@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
+import { AUTH_STATUS, AuthProvider, useAuth } from './contexts/AuthContext'
 import { ModeProvider } from './contexts/ModeContext'
 import Layout from './components/Layout'
 import NCBAuth from './components/auth/NCBAuth'
@@ -43,84 +43,58 @@ const ProtectedAppShell = ({ showOnboarding, onOnboardingComplete }) => {
   )
 }
 
+const AuthErrorScreen = ({ error, onRetry }) => (
+  <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className="max-w-md rounded-lg bg-white p-6 text-center shadow">
+      <h1 className="text-xl font-semibold text-slate-900">We couldn't verify your session</h1>
+      <p className="mt-2 text-slate-600">{error?.message || 'Please check your connection and try again.'}</p>
+      <button type="button" onClick={onRetry} className="mt-5 rounded bg-blue-600 px-4 py-2 text-white">Try again</button>
+    </div>
+  </div>
+)
+
 const AppRoutes = () => {
-  const { user, loading, refreshSession, clearAuthState } = useAuth()
+  const { status, error, retrySessionVerification } = useAuth()
   const location = useLocation()
-  const navigate = useNavigate()
-  const isPublicAuthRoute = location.pathname === '/login' || location.pathname === '/register'
-  const [checkingSession, setCheckingSession] = useState(true)
   const [checkingOnboarding, setCheckingOnboarding] = useState(true)
   const [showOnboarding, setShowOnboarding] = useState(false)
 
   useEffect(() => {
-    let isMounted = true
+    if (status === AUTH_STATUS.INITIALIZING) return
 
-    const verifySession = async () => {
-      setCheckingSession(true)
-
-      try {
-        const currentUser = await refreshSession()
-
-        if (!isMounted) return
-
-        if (!currentUser) {
-          clearAuthState()
-          if (!isPublicAuthRoute) {
-            navigate('/login', { replace: true, state: { from: location } })
-          }
-        }
-      } catch (error) {
-        if (!isMounted) return
-
-        clearAuthState()
-        if (!isPublicAuthRoute) {
-          navigate('/login', { replace: true, state: { from: location } })
-        }
-      } finally {
-        if (isMounted) {
-          setCheckingSession(false)
-        }
-      }
-    }
-
-    verifySession()
-
-    return () => {
-      isMounted = false
-    }
-  }, [clearAuthState, isPublicAuthRoute, location, navigate, refreshSession])
-
-  useEffect(() => {
-    if (checkingSession) return
-
-    if (user) {
-      const completed = onboardingService.hasCompletedOnboarding()
-      setShowOnboarding(!completed)
+    if (status === AUTH_STATUS.AUTHENTICATED) {
+      setShowOnboarding(!onboardingService.hasCompletedOnboarding())
     } else {
       setShowOnboarding(false)
     }
 
     setCheckingOnboarding(false)
-  }, [checkingSession, user])
+  }, [status])
 
   const handleOnboardingComplete = () => {
     setShowOnboarding(false)
   }
 
-  if (loading || checkingSession || checkingOnboarding) {
+  if (status === AUTH_STATUS.INITIALIZING || checkingOnboarding) {
     return <LoadingScreen />
   }
 
+  if (status === AUTH_STATUS.ERROR) {
+    return <AuthErrorScreen error={error} onRetry={retrySessionVerification} />
+  }
+
+  const isAuthenticated = status === AUTH_STATUS.AUTHENTICATED
+
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/" replace /> : <NCBAuth mode="login" />} />
-      <Route path="/register" element={user ? <Navigate to="/" replace /> : <NCBAuth mode="register" />} />
+      <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <NCBAuth mode="login" />} />
+      <Route path="/register" element={isAuthenticated ? <Navigate to="/" replace /> : <NCBAuth mode="register" />} />
       {import.meta.env.DEV && (
         <Route path="/dev-profiles" element={<ProfileSelector />} />
       )}
       <Route
         element={
-          user ? (
+          isAuthenticated ? (
             <ProtectedAppShell
               showOnboarding={showOnboarding}
               onOnboardingComplete={handleOnboardingComplete}
@@ -138,7 +112,7 @@ const AppRoutes = () => {
         <Route path="/inbox" element={<Inbox />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
-      <Route path="*" element={<Navigate to={user ? '/' : '/login'} replace state={{ from: location }} />} />
+      <Route path="*" element={<Navigate to={isAuthenticated ? '/' : '/login'} replace state={{ from: location }} />} />
     </Routes>
   )
 }
