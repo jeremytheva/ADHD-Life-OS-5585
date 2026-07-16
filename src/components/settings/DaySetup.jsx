@@ -20,7 +20,13 @@ const DaySetup = ({ preferences, onUpdate }) => {
     setSaving(true)
     
     try {
-      await onUpdate(formData)
+      // Empty optional time inputs are represented as null in the canonical
+      // preferences schema instead of the browser's empty-string value.
+      await onUpdate({
+        ...formData,
+        work_start_time: formData.work_start_time || null,
+        work_end_time: formData.work_end_time || null
+      })
     } catch (error) {
       console.error('Error updating day setup:', error)
     } finally {

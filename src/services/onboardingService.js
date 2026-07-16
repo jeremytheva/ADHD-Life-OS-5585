@@ -132,8 +132,10 @@ export const onboardingService = {
     safeWrite(prefsKey, existingPrefs)
   },
 
-  // Get user's applied preferences
-  getUserPreferences() {
+  // This is the locally stored onboarding snapshot, not the canonical domain
+  // preferences record. Domain preferences must be read from
+  // domain/preferences/repository.
+  getAppliedOnboardingPreferences() {
     const userId = getCurrentUserId()
     if (!userId) return null
     
