@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { userPreferencesSchema } from '../../domains/schemas'
 import { requestDataEndpoint } from '../../infrastructure/nocodebackend/dataClient'
 import { NoCodeBackendError } from '../../infrastructure/nocodebackend/errors'
 
@@ -33,11 +34,7 @@ const userPreferencesWriteSchema = preferenceFieldsSchema.extend({
   updated_at: z.string()
 })
 
-const userPreferencesResponseSchema = preferenceFieldsSchema.extend({
-  id: z.union([z.string(), z.number()]).optional(),
-  user_id: z.union([z.string(), z.number()]),
-  updated_at: z.string().optional()
-}).passthrough()
+const userPreferencesResponseSchema = userPreferencesSchema
 
 const userContextSchema = z.object({
   id: z.union([z.string().min(1), z.number()])

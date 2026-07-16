@@ -1,4 +1,6 @@
 import { clearAuthenticatedUserCache, setCurrentUser } from './authStorage';
+import { userSchema } from '../domains/schemas';
+import { DomainValidationError } from '../infrastructure/nocodebackend/errors';
 
 class AuthProxyError extends Error {
   constructor(message, status) {
@@ -54,7 +56,10 @@ const requestAuthProxy = async (path, options = {}) => {
 };
 
 const buildAuthResult = (payload) => {
-  const user = normalizeUser(payload);
+  const candidate = normalizeUser(payload);
+  const parsed = candidate === null ? { success: true, data: null } : userSchema.safeParse(candidate);
+  if (!parsed.success) throw new DomainValidationError('Authentication API returned an invalid user.', parsed.error.flatten());
+  const user = parsed.data;
   const session = normalizeSession(payload) ?? (user ? { user } : null);
 
   // Keep the existing current-user cache in sync for app services that still
@@ -98,7 +103,10 @@ export const authService = {
 
   async getCurrentUser() {
     const payload = await requestAuthProxy('get-session');
-    const user = normalizeUser(payload);
+    const candidate = normalizeUser(payload);
+    const parsed = candidate === null ? { success: true, data: null } : userSchema.safeParse(candidate);
+    if (!parsed.success) throw new DomainValidationError('Authentication API returned an invalid user.', parsed.error.flatten());
+    const user = parsed.data;
     setCurrentUser(user);
     return user;
   },
