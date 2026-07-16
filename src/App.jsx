@@ -84,6 +84,7 @@ const AppRoutes = () => {
   }
 
   const isAuthenticated = status === AUTH_STATUS.AUTHENTICATED
+  const isAnonymous = status === AUTH_STATUS.ANONYMOUS
 
   return (
     <Routes>
@@ -99,8 +100,10 @@ const AppRoutes = () => {
               showOnboarding={showOnboarding}
               onOnboardingComplete={handleOnboardingComplete}
             />
-          ) : (
+          ) : isAnonymous ? (
             <Navigate to="/login" replace state={{ from: location }} />
+          ) : (
+            <LoadingScreen />
           )
         }
       >
@@ -112,7 +115,14 @@ const AppRoutes = () => {
         <Route path="/inbox" element={<Inbox />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
-      <Route path="*" element={<Navigate to={isAuthenticated ? '/' : '/login'} replace state={{ from: location }} />} />
+      <Route
+        path="*"
+        element={
+          isAuthenticated ? <Navigate to="/" replace />
+            : isAnonymous ? <Navigate to="/login" replace state={{ from: location }} />
+              : <LoadingScreen />
+        }
+      />
     </Routes>
   )
 }

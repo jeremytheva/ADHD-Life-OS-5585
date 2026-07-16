@@ -23,6 +23,7 @@ export const AuthProvider = ({ children }) => {
   const [status, setStatus] = useState(AUTH_STATUS.INITIALIZING);
   const [error, setError] = useState(null);
   const verificationStarted = useRef(false);
+  const verificationId = useRef(0);
   const mounted = useRef(false);
 
   const clearAuthState = useCallback(() => {
@@ -31,18 +32,19 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const verifySession = useCallback(async () => {
+    const currentVerificationId = ++verificationId.current;
     setStatus(AUTH_STATUS.INITIALIZING);
     setError(null);
 
     try {
       const currentUser = await authService.getCurrentUser();
-      if (!mounted.current) return null;
+      if (!mounted.current || currentVerificationId !== verificationId.current) return null;
 
       setUser(currentUser);
       setStatus(currentUser ? AUTH_STATUS.AUTHENTICATED : AUTH_STATUS.ANONYMOUS);
       return currentUser;
     } catch (verificationError) {
-      if (!mounted.current) return null;
+      if (!mounted.current || currentVerificationId !== verificationId.current) return null;
 
       clearAuthState();
       if (authService.isUnauthorizedError(verificationError)) {
@@ -76,6 +78,10 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const { data: { subscription } } = authService.onAuthStateChange((event, session) => {
       console.log('Auth state changed:', event, session?.user?.email);
+      // An auth event is newer than a pending startup or retry verification.
+      // Ignore that stale request when it eventually settles so explicit
+      // sign-in/sign-out state cannot be overwritten by an older response.
+      verificationId.current += 1;
       const nextUser = session?.user ?? null;
       setUser(nextUser);
       setError(null);
