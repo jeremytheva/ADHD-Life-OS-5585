@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import * as FiIcons from 'react-icons/fi'
 import SafeIcon from '../../common/SafeIcon'
+import { accessibilityPreferencesSchema } from '../../domains/schemas'
 
 const { FiX, FiType, FiEye, FiZap, FiVolume2, FiSave } = FiIcons
 
@@ -24,7 +25,8 @@ const AccessibilitySettings = ({ onClose }) => {
     try {
       const saved = localStorage.getItem(ACCESSIBILITY_KEY)
       if (saved) {
-        setSettings(JSON.parse(saved))
+        const parsed = accessibilityPreferencesSchema.safeParse(JSON.parse(saved))
+        if (parsed.success) setSettings(parsed.data)
       }
     } catch (error) {
       console.error('Error loading accessibility settings:', error)
@@ -94,7 +96,9 @@ const AccessibilitySettings = ({ onClose }) => {
 
   const handleSave = () => {
     try {
-      localStorage.setItem(ACCESSIBILITY_KEY, JSON.stringify(settings))
+      const parsed = accessibilityPreferencesSchema.safeParse(settings)
+      if (!parsed.success) return
+      localStorage.setItem(ACCESSIBILITY_KEY, JSON.stringify(parsed.data))
       onClose()
     } catch (error) {
       console.error('Error saving accessibility settings:', error)

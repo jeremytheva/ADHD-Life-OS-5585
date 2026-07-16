@@ -3,16 +3,22 @@
 
 import { getCurrentUserId } from './authStorage'
 import { safeRead, safeWrite } from './storageService'
+import { onboardingDataSchema } from '../domains/schemas'
 
 const ONBOARDING_STORAGE_KEY = 'adhd_lifeos_onboarding'
 
 
 // Get stored onboarding data
-const getStoredOnboarding = () => safeRead(ONBOARDING_STORAGE_KEY, {})
+const getStoredOnboarding = () => {
+  const stored = safeRead(ONBOARDING_STORAGE_KEY, {})
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {}
+  return Object.fromEntries(Object.entries(stored).filter(([, value]) => onboardingDataSchema.safeParse(value).success))
+}
 
 // Set stored onboarding data
 const setStoredOnboarding = (data) => {
-  safeWrite(ONBOARDING_STORAGE_KEY, data)
+  const valid = Object.fromEntries(Object.entries(data).filter(([, value]) => onboardingDataSchema.safeParse(value).success))
+  safeWrite(ONBOARDING_STORAGE_KEY, valid)
 }
 
 export const onboardingService = {
@@ -71,6 +77,9 @@ export const onboardingService = {
       updatedAt: new Date().toISOString()
     }
     
+    const parsed = onboardingDataSchema.safeParse(allOnboarding[userId])
+    if (!parsed.success) throw new Error('Invalid onboarding preferences.')
+    allOnboarding[userId] = parsed.data
     setStoredOnboarding(allOnboarding)
     return allOnboarding[userId]
   },
@@ -91,6 +100,9 @@ export const onboardingService = {
       completedAt: new Date().toISOString()
     }
     
+    const parsed = onboardingDataSchema.safeParse(allOnboarding[userId])
+    if (!parsed.success) throw new Error('Invalid onboarding preferences.')
+    allOnboarding[userId] = parsed.data
     setStoredOnboarding(allOnboarding)
     
     // Apply preferences to user account

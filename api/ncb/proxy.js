@@ -1,11 +1,16 @@
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
+import { domainCreateSchemasByCollection, domainPatchSchemasByCollection } from '../../src/domains/schemas.js'
 
 const MAX_BODY_BYTES = 32 * 1024
 const UPSTREAM_TIMEOUT_MS = 10000
 const HOP_BY_HOP_HEADERS = new Set(['connection', 'content-encoding', 'content-length', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'transfer-encoding', 'upgrade'])
 const FORWARDED_RESPONSE_HEADERS = new Set(['content-type', 'cache-control', 'etag', 'last-modified', 'location', 'www-authenticate'])
 const objectPayload = z.object({}).passthrough()
+const dataPayloadSchema = (path, method) => {
+  const schema = method === 'POST' ? domainCreateSchemasByCollection[path[0]] : domainPatchSchemasByCollection[path[0]]
+  return schema ?? objectPayload
+}
 const credentialsPayload = z.object({ email: z.string().email().max(254), password: z.string().min(8).max(256) }).strict()
 const id = z.string().min(1).max(200).regex(/^[A-Za-z0-9._-]+$/)
 const collection = z.enum(['user-preferences', 'tasks', 'projects', 'subtasks', 'routines', 'routine-steps', 'routine-sessions', 'housework-tasks', 'housework-completions', 'inbox-items'])
@@ -120,7 +125,8 @@ export const createNcbHandler = (scope) => async (req, res) => {
     return apiError(res, error.code === 'BODY_TOO_LARGE' ? 413 : 400, error.code === 'BODY_TOO_LARGE' ? 'NCB_BODY_TOO_LARGE' : 'NCB_INVALID_JSON', correlationId)
   }
 
-  const parsed = route.methods[method].safeParse(body)
+  const schema = scope === 'data' && ['POST', 'PATCH'].includes(method) ? dataPayloadSchema(path, method) : route.methods[method]
+  const parsed = schema.safeParse(body)
   if (!parsed.success) return apiError(res, 400, 'NCB_INVALID_REQUEST', correlationId)
 
   const target = upstreamUrl(scope, path, parsedQuery.data)

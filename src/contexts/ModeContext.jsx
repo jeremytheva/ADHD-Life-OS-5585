@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { modulePreferencesSchema } from '../domains/schemas'
 
 const ModeContext = createContext()
 
@@ -97,7 +98,10 @@ export const ModeProvider = ({ children }) => {
 
       const savedPreferences = localStorage.getItem(MODE_PREFERENCES_KEY)
       if (savedPreferences) {
-        setModePreferences(JSON.parse(savedPreferences))
+        const parsedPreferences = JSON.parse(savedPreferences)
+        if (parsedPreferences && typeof parsedPreferences === 'object' && !Array.isArray(parsedPreferences)) {
+          setModePreferences(Object.fromEntries(Object.entries(parsedPreferences).filter(([, value]) => modulePreferencesSchema.safeParse(value).success)))
+        }
       }
     } catch (error) {
       console.error('Error loading mode:', error)
@@ -135,13 +139,10 @@ export const ModeProvider = ({ children }) => {
 
   const updateModePreferences = (modeId, preferences) => {
     setModePreferences(prev => {
-      const updated = {
-        ...prev,
-        [modeId]: {
-          ...prev[modeId],
-          ...preferences
-        }
-      }
+      const candidate = { ...prev[modeId], ...preferences }
+      const parsed = modulePreferencesSchema.safeParse(candidate)
+      if (!parsed.success) return prev
+      const updated = { ...prev, [modeId]: parsed.data }
       localStorage.setItem(MODE_PREFERENCES_KEY, JSON.stringify(updated))
       return updated
     })

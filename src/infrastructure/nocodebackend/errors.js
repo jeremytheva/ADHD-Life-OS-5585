@@ -14,3 +14,10 @@ export const requireAuthenticatedUser = (userId) => {
   }
   return userId
 }
+
+export class DomainValidationError extends NoCodeBackendError {
+  constructor(message, details = null) {
+    super(message, { code: 'DOMAIN_VALIDATION_ERROR', status: 422, details })
+    this.name = 'DomainValidationError'
+  }
+}
