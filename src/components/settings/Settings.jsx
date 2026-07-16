@@ -4,7 +4,7 @@ import * as FiIcons from 'react-icons/fi'
 import SafeIcon from '../../common/SafeIcon'
 import { useAuth } from '../../contexts/AuthContext'
 import { useMode } from '../../contexts/ModeContext'
-import { userService } from '../../services/userService'
+import { getUserPreferences, updateUserPreferences } from '../../domain/preferences/repository'
 import DaySetup from './DaySetup'
 import ModePreferences from '../mode/ModePreferences'
 import AccessibilitySettings from '../accessibility/AccessibilitySettings'
@@ -16,31 +16,45 @@ const Settings = () => {
   const { currentMode, allModes } = useMode()
   const [preferences, setPreferences] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
+  const [saveError, setSaveError] = useState(null)
+  const [lastUpdates, setLastUpdates] = useState(null)
   const [showModePrefs, setShowModePrefs] = useState(false)
   const [showAccessibility, setShowAccessibility] = useState(false)
   const [selectedModeForPrefs, setSelectedModeForPrefs] = useState(null)
 
   useEffect(() => {
-    loadPreferences()
-  }, [])
+    if (user) loadPreferences()
+    else {
+      setPreferences(null)
+      setLoading(false)
+    }
+  }, [user])
 
   const loadPreferences = async () => {
+    setLoading(true)
+    setLoadError(null)
     try {
-      const data = await userService.getUserPreferences()
+      const data = await getUserPreferences(user)
       setPreferences(data)
     } catch (error) {
       console.error('Error loading preferences:', error)
+      setLoadError(error)
     } finally {
       setLoading(false)
     }
   }
 
   const handleUpdatePreferences = async (updates) => {
+    setSaveError(null)
+    setLastUpdates(updates)
     try {
-      const updated = await userService.updateUserPreferences(updates)
+      const updated = await updateUserPreferences(user, updates)
       setPreferences(updated)
     } catch (error) {
       console.error('Error updating preferences:', error)
+      setSaveError(error)
+      throw error
     }
   }
 
@@ -63,6 +77,24 @@ const Settings = () => {
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-medium text-slate-900">Settings</h1>
+
+      {loadError && (
+        <div role="alert" className="flex items-center justify-between gap-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+          <p>Could not load preferences: {loadError.message}</p>
+          <button onClick={loadPreferences} className="shrink-0 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800">
+            Retry loading
+          </button>
+        </div>
+      )}
+
+      {saveError && (
+        <div role="alert" className="flex items-center justify-between gap-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+          <p>Could not save preferences: {saveError.message}</p>
+          <button onClick={() => handleUpdatePreferences(lastUpdates)} disabled={!lastUpdates} className="shrink-0 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50">
+            Retry saving
+          </button>
+        </div>
+      )}
 
       <div className="space-y-6">
         {/* Account Info */}
