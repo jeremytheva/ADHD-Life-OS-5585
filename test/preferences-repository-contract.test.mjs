@@ -22,7 +22,8 @@ test('Settings supplies authenticated user context and gives retry actions for p
   assert.match(settings, /Retry saving/)
 })
 
-test('onboarding storage does not expose a competing preferences repository API', () => {
-  assert.match(onboardingService, /getAppliedOnboardingPreferences\(\)/)
-  assert.doesNotMatch(onboardingService, /getUserPreferences\(\)/)
+test('onboarding persists through the canonical preferences repository rather than local storage', () => {
+  assert.match(onboardingService, /getUserPreferences/)
+  assert.match(onboardingService, /updateUserPreferences/)
+  assert.doesNotMatch(onboardingService, /safeRead|safeWrite|localStorage/)
 })

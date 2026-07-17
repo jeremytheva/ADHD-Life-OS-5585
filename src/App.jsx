@@ -61,14 +61,21 @@ const AppRoutes = () => {
 
   useEffect(() => {
     if (status === AUTH_STATUS.INITIALIZING) return
-
-    if (status === AUTH_STATUS.AUTHENTICATED) {
-      setShowOnboarding(!onboardingService.hasCompletedOnboarding())
-    } else {
+    if (status !== AUTH_STATUS.AUTHENTICATED) {
       setShowOnboarding(false)
+      setCheckingOnboarding(false)
+      return
     }
 
-    setCheckingOnboarding(false)
+    let active = true
+    onboardingService.hasCompletedOnboarding()
+      .then((isComplete) => active && setShowOnboarding(!isComplete))
+      .catch((error) => {
+        console.error('Error checking onboarding status:', error)
+        if (active) setShowOnboarding(true)
+      })
+      .finally(() => active && setCheckingOnboarding(false))
+    return () => { active = false }
   }, [status])
 
   const handleOnboardingComplete = () => {

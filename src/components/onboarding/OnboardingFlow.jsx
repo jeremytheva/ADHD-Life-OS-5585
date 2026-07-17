@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as FiIcons from 'react-icons/fi'
 import SafeIcon from '../../common/SafeIcon'
-import { onboardingService } from '../../services/onboardingService'
+import { ONBOARDING_STEPS, onboardingService } from '../../services/onboardingService'
 import WelcomeStep from './steps/WelcomeStep'
 import LifeRolesStep from './steps/LifeRolesStep'
 import ModulesStep from './steps/ModulesStep'
@@ -14,9 +14,7 @@ const { FiX, FiChevronLeft, FiChevronRight } = FiIcons
 
 const OnboardingFlow = ({ onComplete, onSkip }) => {
   const [currentStep, setCurrentStep] = useState(0)
-  const [onboardingData, setOnboardingData] = useState(
-    onboardingService.getDefaultOnboardingData()
-  )
+  const [onboardingData, setOnboardingData] = useState(onboardingService.getDefaultOnboardingData())
 
   const steps = [
     { id: 'welcome', component: WelcomeStep, title: 'Welcome!' },
@@ -27,7 +25,20 @@ const OnboardingFlow = ({ onComplete, onSkip }) => {
     { id: 'completion', component: CompletionStep, title: 'You\'re All Set!' }
   ]
 
-  const totalSteps = steps.length
+  const totalSteps = ONBOARDING_STEPS.length
+
+  useEffect(() => {
+    let active = true
+    onboardingService.getOnboardingData().then((savedData) => {
+      if (!active || !savedData) return
+      setOnboardingData(savedData)
+      setCurrentStep(savedData.progress.currentStep)
+    }).catch((error) => {
+      console.error('Error loading onboarding progress:', error)
+    })
+    return () => { active = false }
+  }, [])
+
   const CurrentStepComponent = steps[currentStep].component
 
   const handleNext = (stepData) => {
@@ -36,19 +47,19 @@ const OnboardingFlow = ({ onComplete, onSkip }) => {
       ...stepData,
       progress: {
         ...onboardingData.progress,
-        currentStep: currentStep + 1,
-        completedSteps: [...onboardingData.progress.completedSteps, steps[currentStep].id]
+        currentStep: Math.min(currentStep + 1, totalSteps - 1),
+        totalSteps,
+        completedSteps: [...new Set([...onboardingData.progress.completedSteps, steps[currentStep].id])]
       }
     }
 
     setOnboardingData(updatedData)
-    onboardingService.saveProgress(updatedData)
-
     if (currentStep === totalSteps - 1) {
-      // Complete onboarding
-      onboardingService.completeOnboarding(updatedData)
-      if (onComplete) onComplete(updatedData)
+      onboardingService.completeOnboarding(updatedData).then((completedData) => {
+        if (onComplete) onComplete(completedData)
+      }).catch((error) => console.error('Error completing onboarding:', error))
     } else {
+      onboardingService.saveProgress(updatedData).catch((error) => console.error('Error saving onboarding progress:', error))
       setCurrentStep(currentStep + 1)
     }
   }
@@ -60,8 +71,9 @@ const OnboardingFlow = ({ onComplete, onSkip }) => {
   }
 
   const handleSkipAll = () => {
-    const skippedData = onboardingService.skipOnboarding()
-    if (onSkip) onSkip(skippedData)
+    onboardingService.skipOnboarding().then((skippedData) => {
+      if (onSkip) onSkip(skippedData)
+    }).catch((error) => console.error('Error skipping onboarding:', error))
   }
 
   const progress = ((currentStep + 1) / totalSteps) * 100
