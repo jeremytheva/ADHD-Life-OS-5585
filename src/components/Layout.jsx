@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as FiIcons from 'react-icons/fi'
@@ -11,8 +11,7 @@ import AccessibilitySettings from './accessibility/AccessibilitySettings'
 import GamificationDashboard from './gamification/GamificationDashboard'
 import RewardShop from './gamification/RewardShop'
 import { gamificationService } from '../services/gamificationService'
-import { onboardingService } from '../services/onboardingService'
-import { getVisibleNavigationItems, navigationConfig } from '../config/navigation'
+import { getVisibleNavigationItems } from '../config/navigation'
 
 const {
   FiCalendar,
@@ -35,23 +34,14 @@ const iconByPath = {
 }
 
 
-const Layout = ({ children }) => {
+const Layout = ({ children, enabledModules = [] }) => {
   const { user, signOut } = useAuth()
   const { currentMode, filterByMode } = useMode()
   const [showGamification, setShowGamification] = useState(false)
   const [showRewardShop, setShowRewardShop] = useState(false)
   const [showModePreferences, setShowModePreferences] = useState(false)
   const [showAccessibility, setShowAccessibility] = useState(false)
-  const [enabledModules, setEnabledModules] = useState([])
   const stats = gamificationService.getUserStats()
-
-  useEffect(() => {
-    let active = true
-    onboardingService.getEnabledModules()
-      .then((modules) => active && setEnabledModules(modules))
-      .catch((error) => console.error('Error loading enabled modules:', error))
-    return () => { active = false }
-  }, [user?.id])
   const currency = gamificationService.getCurrency()
 
   const handleSignOut = async () => {

@@ -26,7 +26,7 @@ const LoadingScreen = () => (
   </div>
 )
 
-const ProtectedAppShell = ({ showOnboarding, onOnboardingComplete }) => {
+const ProtectedAppShell = ({ enabledModules, showOnboarding, onOnboardingComplete }) => {
   if (showOnboarding) {
     return (
       <OnboardingFlow
@@ -37,7 +37,7 @@ const ProtectedAppShell = ({ showOnboarding, onOnboardingComplete }) => {
   }
 
   return (
-    <Layout>
+    <Layout enabledModules={enabledModules}>
       <Outlet />
     </Layout>
   )
@@ -58,18 +58,24 @@ const AppRoutes = () => {
   const location = useLocation()
   const [checkingOnboarding, setCheckingOnboarding] = useState(true)
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [enabledModules, setEnabledModules] = useState([])
 
   useEffect(() => {
     if (status === AUTH_STATUS.INITIALIZING) return
     if (status !== AUTH_STATUS.AUTHENTICATED) {
       setShowOnboarding(false)
+      setEnabledModules([])
       setCheckingOnboarding(false)
       return
     }
 
     let active = true
-    onboardingService.hasCompletedOnboarding()
-      .then((isComplete) => active && setShowOnboarding(!isComplete))
+    onboardingService.getOnboardingData()
+      .then((onboardingData) => {
+        if (!active) return
+        setEnabledModules(onboardingData?.enabledModules ?? [])
+        setShowOnboarding(!onboardingData?.progress.isComplete)
+      })
       .catch((error) => {
         console.error('Error checking onboarding status:', error)
         if (active) setShowOnboarding(true)
@@ -78,7 +84,8 @@ const AppRoutes = () => {
     return () => { active = false }
   }, [status])
 
-  const handleOnboardingComplete = () => {
+  const handleOnboardingComplete = (onboardingData) => {
+    setEnabledModules(onboardingData?.enabledModules ?? [])
     setShowOnboarding(false)
   }
 
@@ -104,6 +111,7 @@ const AppRoutes = () => {
         element={
           isAuthenticated ? (
             <ProtectedAppShell
+              enabledModules={enabledModules}
               showOnboarding={showOnboarding}
               onOnboardingComplete={handleOnboardingComplete}
             />

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as FiIcons from 'react-icons/fi'
 import SafeIcon from '../../common/SafeIcon'
-import { ONBOARDING_STEPS, onboardingService } from '../../services/onboardingService'
+import { onboardingService } from '../../services/onboardingService'
 import WelcomeStep from './steps/WelcomeStep'
 import LifeRolesStep from './steps/LifeRolesStep'
 import ModulesStep from './steps/ModulesStep'
@@ -12,20 +12,22 @@ import CompletionStep from './steps/CompletionStep'
 
 const { FiX, FiChevronLeft, FiChevronRight } = FiIcons
 
+// Keep the rendered flow as the source of truth for the number of screens a
+// person sees. Persisted data is normalized by onboardingService before it is
+// used here, so an older record cannot select a screen outside this flow.
+const ONBOARDING_FLOW = [
+  { id: 'welcome', component: WelcomeStep, title: 'Welcome!' },
+  { id: 'roles', component: LifeRolesStep, title: 'Your Life Roles' },
+  { id: 'modules', component: ModulesStep, title: 'Choose Your Tools' },
+  { id: 'style', component: UIStyleStep, title: 'Pick Your Style' },
+  { id: 'preferences', component: PreferencesStep, title: 'Fine-Tune Experience' },
+  { id: 'completion', component: CompletionStep, title: 'You\'re All Set!' }
+]
+
 const OnboardingFlow = ({ onComplete, onSkip }) => {
   const [currentStep, setCurrentStep] = useState(0)
   const [onboardingData, setOnboardingData] = useState(onboardingService.getDefaultOnboardingData())
-
-  const steps = [
-    { id: 'welcome', component: WelcomeStep, title: 'Welcome!' },
-    { id: 'roles', component: LifeRolesStep, title: 'Your Life Roles' },
-    { id: 'modules', component: ModulesStep, title: 'Choose Your Tools' },
-    { id: 'style', component: UIStyleStep, title: 'Pick Your Style' },
-    { id: 'preferences', component: PreferencesStep, title: 'Fine-Tune Experience' },
-    { id: 'completion', component: CompletionStep, title: 'You\'re All Set!' }
-  ]
-
-  const totalSteps = ONBOARDING_STEPS.length
+  const totalSteps = ONBOARDING_FLOW.length
 
   useEffect(() => {
     let active = true
@@ -39,7 +41,7 @@ const OnboardingFlow = ({ onComplete, onSkip }) => {
     return () => { active = false }
   }, [])
 
-  const CurrentStepComponent = steps[currentStep].component
+  const CurrentStepComponent = ONBOARDING_FLOW[currentStep].component
 
   const handleNext = (stepData) => {
     const updatedData = {
@@ -49,7 +51,7 @@ const OnboardingFlow = ({ onComplete, onSkip }) => {
         ...onboardingData.progress,
         currentStep: Math.min(currentStep + 1, totalSteps - 1),
         totalSteps,
-        completedSteps: [...new Set([...onboardingData.progress.completedSteps, steps[currentStep].id])]
+        completedSteps: [...new Set([...onboardingData.progress.completedSteps, ONBOARDING_FLOW[currentStep].id])]
       }
     }
 
@@ -90,7 +92,7 @@ const OnboardingFlow = ({ onComplete, onSkip }) => {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-2xl font-bold text-slate-900">
-                {steps[currentStep].title}
+                {ONBOARDING_FLOW[currentStep].title}
               </h2>
               <p className="text-sm text-slate-600 mt-1">
                 Step {currentStep + 1} of {totalSteps}
