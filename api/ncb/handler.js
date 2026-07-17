@@ -21,6 +21,7 @@ const credentialsSchema = z.object({
   email: z.string().trim().email().max(254),
   password: z.string().min(8).max(256)
 }).strict()
+const sessionUserSchema = z.object({ id: z.union([identifierSchema, z.number().int().nonnegative()]) }).passthrough()
 
 // This is intentionally an explicit API contract, rather than a path proxy.
 const ROUTES = Object.freeze({
@@ -136,6 +137,42 @@ const getUpstreamUrl = (scope, path, query) => {
   }
 }
 
+const sessionUserFromResponse = (responseBody) => {
+  let payload
+  try { payload = JSON.parse(responseBody.toString('utf8')) } catch { return null }
+  const user = payload?.user ?? payload?.data?.user ?? payload?.data?.session?.user ?? payload?.session?.user ?? null
+  const parsed = sessionUserSchema.safeParse(user)
+  return parsed.success ? String(parsed.data.id) : null
+}
+
+const getAuthenticatedUserId = async (req, correlationId) => {
+  const target = getUpstreamUrl('auth', ['get-session'], {})
+  if (!target) return { code: 'NCB_SERVICE_UNAVAILABLE', status: 503 }
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS)
+  try {
+    const headers = { Authorization: `Bearer ${process.env.NCB_SECRET_KEY}`, Accept: 'application/json', 'X-Correlation-Id': correlationId }
+    if (req.headers.cookie) headers.Cookie = req.headers.cookie
+    const upstream = await fetch(target, { method: 'GET', headers, signal: controller.signal, redirect: 'manual' })
+    if (!upstream.ok) return { code: 'NCB_AUTH_REQUIRED', status: 401 }
+    const userId = sessionUserFromResponse(Buffer.from(await upstream.arrayBuffer()))
+    return userId ? { userId } : { code: 'NCB_AUTH_REQUIRED', status: 401 }
+  } catch {
+    return { code: 'NCB_UPSTREAM_UNAVAILABLE', status: 502 }
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+const constrainDataRequestToUser = (query, body, method, userId) => {
+  if (query.user_id !== undefined && query.user_id !== userId) return { code: 'NCB_USER_ID_MISMATCH' }
+  if (method === 'POST' && body?.user_id !== undefined && String(body.user_id) !== userId) return { code: 'NCB_USER_ID_MISMATCH' }
+  return {
+    query: { ...query, user_id: userId },
+    body: method === 'POST' ? { ...body, user_id: userId } : body
+  }
+}
+
 const forwardSetCookies = (upstream, res) => {
   const cookies = typeof upstream.headers.getSetCookie === 'function'
     ? upstream.headers.getSetCookie()
@@ -162,6 +199,16 @@ export const createNcbHandler = (scope) => async (req, res) => {
   if (contentType && !contentType.toLowerCase().startsWith('application/json')) return apiError(res, 400, 'NCB_INVALID_JSON', correlationId)
   let body
   try { body = await readJsonBody(req) } catch (error) { return apiError(res, error.code === 'NCB_BODY_TOO_LARGE' ? 413 : 400, error.code ?? 'NCB_INVALID_JSON', correlationId) }
+  if (scope === 'data') {
+    // The browser cache is not an authority. Resolve ownership from the
+    // upstream session before an allowlisted data endpoint is ever contacted.
+    const identity = await getAuthenticatedUserId(req, correlationId)
+    if (identity.code) return apiError(res, identity.status, identity.code, correlationId)
+    const constrained = constrainDataRequestToUser(parsedQuery.data, body, method, identity.userId)
+    if (constrained.code) return apiError(res, 403, constrained.code, correlationId)
+    body = constrained.body
+    parsedQuery.data = constrained.query
+  }
   const schema = requestSchema(scope, route, path, method)
   const parsedBody = schema?.safeParse(body)
   if (!parsedBody?.success) return apiError(res, 400, 'NCB_INVALID_REQUEST', correlationId)
