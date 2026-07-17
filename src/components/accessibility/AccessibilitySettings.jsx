@@ -1,91 +1,21 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import * as FiIcons from 'react-icons/fi'
 import SafeIcon from '../../common/SafeIcon'
-import { accessibilityPreferencesSchema } from '../../domains/schemas'
+import { useAccessibilityPreferences } from '../../contexts/AccessibilityPreferencesContext'
+import { applyAccessibilityPreferences } from '../../services/accessibilityPreferences'
 
-const { FiX, FiType, FiEye, FiZap, FiVolume2, FiSave } = FiIcons
-
-const ACCESSIBILITY_KEY = 'adhd_lifeos_accessibility'
+const { FiX, FiType, FiEye, FiZap, FiSave } = FiIcons
 
 const AccessibilitySettings = ({ onClose }) => {
-  const [settings, setSettings] = useState({
-    fontSize: 'medium',
-    contrast: 'normal',
-    reduceMotion: false,
-    soundEffects: false,
-    focusMode: false,
-    dyslexicFont: false,
-    lineSpacing: 'normal',
-    colorBlindMode: 'none'
-  })
+  const { preferences, savePreferences } = useAccessibilityPreferences()
+  const [settings, setSettings] = useState(() => preferences)
+  const preEditSettings = useRef(preferences)
 
   useEffect(() => {
-    // Load saved settings
-    try {
-      const saved = localStorage.getItem(ACCESSIBILITY_KEY)
-      if (saved) {
-        const parsed = accessibilityPreferencesSchema.safeParse(JSON.parse(saved))
-        if (parsed.success) setSettings(parsed.data)
-      }
-    } catch (error) {
-      console.error('Error loading accessibility settings:', error)
-    }
-  }, [])
-
-  useEffect(() => {
-    // Apply settings to document
-    applySettings(settings)
+    // Changes are previewed, but only Save persists them.
+    applyAccessibilityPreferences(settings)
   }, [settings])
-
-  const applySettings = (settings) => {
-    const root = document.documentElement
-
-    // Font size
-    const fontSizes = {
-      small: '14px',
-      medium: '16px',
-      large: '18px',
-      xlarge: '20px'
-    }
-    root.style.fontSize = fontSizes[settings.fontSize]
-
-    // Contrast
-    if (settings.contrast === 'high') {
-      root.classList.add('high-contrast')
-    } else {
-      root.classList.remove('high-contrast')
-    }
-
-    // Reduce motion
-    if (settings.reduceMotion) {
-      root.style.setProperty('--animation-duration', '0.01ms')
-    } else {
-      root.style.removeProperty('--animation-duration')
-    }
-
-    // Dyslexic font
-    if (settings.dyslexicFont) {
-      root.classList.add('dyslexic-font')
-    } else {
-      root.classList.remove('dyslexic-font')
-    }
-
-    // Line spacing
-    const lineSpacings = {
-      normal: '1.5',
-      relaxed: '1.75',
-      loose: '2'
-    }
-    root.style.lineHeight = lineSpacings[settings.lineSpacing]
-
-    // Focus mode
-    if (settings.focusMode) {
-      root.classList.add('focus-mode')
-    } else {
-      root.classList.remove('focus-mode')
-    }
-  }
 
   const handleChange = (key, value) => {
     setSettings(prev => ({
@@ -95,14 +25,13 @@ const AccessibilitySettings = ({ onClose }) => {
   }
 
   const handleSave = () => {
-    try {
-      const parsed = accessibilityPreferencesSchema.safeParse(settings)
-      if (!parsed.success) return
-      localStorage.setItem(ACCESSIBILITY_KEY, JSON.stringify(parsed.data))
-      onClose()
-    } catch (error) {
-      console.error('Error saving accessibility settings:', error)
-    }
+    if (savePreferences(settings)) onClose()
+  }
+
+  const handleCancel = () => {
+    setSettings(preEditSettings.current)
+    applyAccessibilityPreferences(preEditSettings.current)
+    onClose()
   }
 
   return (
@@ -122,7 +51,8 @@ const AccessibilitySettings = ({ onClose }) => {
               </p>
             </div>
             <button
-              onClick={onClose}
+              onClick={handleCancel}
+              aria-label="Close accessibility settings without saving"
               className="p-2 text-white hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors"
             >
               <SafeIcon icon={FiX} className="w-6 h-6" />
@@ -252,6 +182,8 @@ const AccessibilitySettings = ({ onClose }) => {
               </div>
               <button
                 onClick={() => handleChange('reduceMotion', !settings.reduceMotion)}
+                aria-label="Reduce motion"
+                aria-pressed={settings.reduceMotion}
                 className={`
                   w-12 h-6 rounded-full transition-colors
                   ${settings.reduceMotion ? 'bg-green-500' : 'bg-slate-300'}
@@ -260,33 +192,6 @@ const AccessibilitySettings = ({ onClose }) => {
                 <div className={`
                   w-5 h-5 bg-white rounded-full shadow-md transition-transform
                   ${settings.reduceMotion ? 'translate-x-6' : 'translate-x-0.5'}
-                `} />
-              </button>
-            </div>
-
-            {/* Sound Effects */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <SafeIcon icon={FiVolume2} className="w-4 h-4 text-slate-600" />
-                <div>
-                  <div className="text-sm font-medium text-slate-900">
-                    Sound Effects
-                  </div>
-                  <div className="text-xs text-slate-600">
-                    Enable audio feedback
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={() => handleChange('soundEffects', !settings.soundEffects)}
-                className={`
-                  w-12 h-6 rounded-full transition-colors
-                  ${settings.soundEffects ? 'bg-green-500' : 'bg-slate-300'}
-                `}
-              >
-                <div className={`
-                  w-5 h-5 bg-white rounded-full shadow-md transition-transform
-                  ${settings.soundEffects ? 'translate-x-6' : 'translate-x-0.5'}
                 `} />
               </button>
             </div>
@@ -306,6 +211,8 @@ const AccessibilitySettings = ({ onClose }) => {
               </div>
               <button
                 onClick={() => handleChange('focusMode', !settings.focusMode)}
+                aria-label="Focus mode"
+                aria-pressed={settings.focusMode}
                 className={`
                   w-12 h-6 rounded-full transition-colors
                   ${settings.focusMode ? 'bg-green-500' : 'bg-slate-300'}
@@ -333,6 +240,8 @@ const AccessibilitySettings = ({ onClose }) => {
               </div>
               <button
                 onClick={() => handleChange('dyslexicFont', !settings.dyslexicFont)}
+                aria-label="Dyslexia-friendly font"
+                aria-pressed={settings.dyslexicFont}
                 className={`
                   w-12 h-6 rounded-full transition-colors
                   ${settings.dyslexicFont ? 'bg-green-500' : 'bg-slate-300'}
@@ -351,7 +260,7 @@ const AccessibilitySettings = ({ onClose }) => {
         <div className="p-6 border-t border-slate-200 bg-slate-50">
           <div className="flex gap-3">
             <button
-              onClick={onClose}
+              onClick={handleCancel}
               className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-white transition-colors"
             >
               Cancel
