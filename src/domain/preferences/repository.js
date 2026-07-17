@@ -11,7 +11,8 @@ export const defaultUserPreferences = Object.freeze({
   work_start_time: null,
   work_end_time: null,
   theme: 'low-stim',
-  notifications_enabled: true
+  notifications_enabled: true,
+  onboarding: null
 })
 
 const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Expected a time in HH:MM format.')
@@ -22,7 +23,8 @@ const preferenceFieldsSchema = z.object({
   work_start_time: nullableTimeSchema,
   work_end_time: nullableTimeSchema,
   theme: z.enum(['light', 'dark', 'low-stim']),
-  notifications_enabled: z.boolean()
+  notifications_enabled: z.boolean(),
+  onboarding: userPreferencesSchema.shape.onboarding
 })
 
 export const updateUserPreferencesRequestSchema = preferenceFieldsSchema.partial().strict().refine((updates) => Object.keys(updates).length > 0, {
@@ -110,7 +112,8 @@ export const updateUserPreferences = async (user, updates) => {
       work_start_time: existing.work_start_time,
       work_end_time: existing.work_end_time,
       theme: existing.theme,
-      notifications_enabled: existing.notifications_enabled
+      notifications_enabled: existing.notifications_enabled,
+      onboarding: existing.onboarding ?? null
     } : {}),
     ...validUpdates,
     user_id: userId,

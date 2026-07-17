@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as FiIcons from 'react-icons/fi'
@@ -11,6 +11,8 @@ import AccessibilitySettings from './accessibility/AccessibilitySettings'
 import GamificationDashboard from './gamification/GamificationDashboard'
 import RewardShop from './gamification/RewardShop'
 import { gamificationService } from '../services/gamificationService'
+import { onboardingService } from '../services/onboardingService'
+import { getVisibleNavigationItems, navigationConfig } from '../config/navigation'
 
 const {
   FiCalendar,
@@ -27,6 +29,12 @@ const {
   FiEye
 } = FiIcons
 
+const iconByPath = {
+  '/': FiCalendar, '/tasks': FiCheckSquare, '/routines': FiRepeat, '/projects': FiGrid,
+  '/housework': FiHome, '/inbox': FiInbox, '/settings': FiSettings
+}
+
+
 const Layout = ({ children }) => {
   const { user, signOut } = useAuth()
   const { currentMode, filterByMode } = useMode()
@@ -34,7 +42,16 @@ const Layout = ({ children }) => {
   const [showRewardShop, setShowRewardShop] = useState(false)
   const [showModePreferences, setShowModePreferences] = useState(false)
   const [showAccessibility, setShowAccessibility] = useState(false)
+  const [enabledModules, setEnabledModules] = useState([])
   const stats = gamificationService.getUserStats()
+
+  useEffect(() => {
+    let active = true
+    onboardingService.getEnabledModules()
+      .then((modules) => active && setEnabledModules(modules))
+      .catch((error) => console.error('Error loading enabled modules:', error))
+    return () => { active = false }
+  }, [user?.id])
   const currency = gamificationService.getCurrency()
 
   const handleSignOut = async () => {
@@ -45,20 +62,7 @@ const Layout = ({ children }) => {
     }
   }
 
-  const navItems = [
-    { path: '/', icon: FiCalendar, label: 'Today', modes: ['all'] },
-    { path: '/tasks', icon: FiCheckSquare, label: 'Tasks', modes: ['all', 'work', 'home', 'family', 'health', 'creative'] },
-    { path: '/routines', icon: FiRepeat, label: 'Routines', modes: ['all', 'home', 'health'] },
-    { path: '/projects', icon: FiGrid, label: 'Projects', modes: ['all', 'work', 'creative'] },
-    { path: '/housework', icon: FiHome, label: 'Housework', modes: ['all', 'home'] },
-    { path: '/inbox', icon: FiInbox, label: 'Brain Inbox', modes: ['all'] },
-    { path: '/settings', icon: FiSettings, label: 'Settings', modes: ['all'] }
-  ]
-
-  // Filter nav items based on current mode
-  const visibleNavItems = navItems.filter(item => 
-    item.modes.includes('all') || item.modes.includes(currentMode.id)
-  )
+  const visibleNavItems = getVisibleNavigationItems(enabledModules, currentMode.id).map((item) => ({ ...item, icon: iconByPath[item.path] }))
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
