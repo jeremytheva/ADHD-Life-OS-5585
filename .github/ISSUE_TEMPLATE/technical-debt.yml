@@ -1,0 +1,40 @@
+name: Technical debt
+description: Record maintainability, reliability, quality, or security hardening work.
+title: "debt: "
+labels: ["technical-debt"]
+body:
+  - type: textarea
+    id: debt
+    attributes:
+      label: Debt description
+      description: What is difficult, risky, expensive, or fragile today?
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact and urgency
+      description: Describe user impact, engineering cost, reliability risk, or security implications.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed remediation
+      description: Describe a safe incremental approach, alternatives, and non-goals.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation and rollback
+      description: List tests, observability, migration/rollback steps, and documentation changes.
+    validations:
+      required: true
+  - type: checkboxes
+    id: security-review
+    attributes:
+      label: Security review
+      options:
+        - label: I considered effects on authentication, proxy validation, sensitive data, and dependency risk.
+          required: true
