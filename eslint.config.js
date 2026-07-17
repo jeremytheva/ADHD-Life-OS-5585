@@ -30,9 +30,12 @@ export default [
     rules: {
       'no-undef': 'error', 
       'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'off',
+      'react-hooks/exhaustive-deps': 'error',
       'react-refresh/only-export-components': 'off',
-      'no-unused-vars': 'off',
+      // JSX identifiers are not reported as references by the base rule.
+      // Component names remain checked by the React compiler/toolchain, while
+      // local variables and function parameters are still enforced here.
+      'no-unused-vars': ['error', { varsIgnorePattern: '^(React|[A-Z][A-Za-z0-9_]*)$', argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
       'no-case-declarations': 'off',
       'no-useless-catch': 'off'
     },

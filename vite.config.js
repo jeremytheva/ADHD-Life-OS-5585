@@ -33,6 +33,9 @@ export default defineConfig(({ mode }) => {
     base: './',
     resolve: { alias: { '@': path.resolve(__dirname, './src') } },
     server: { historyApiFallback: true },
-    build: { outDir: 'dist', sourcemap: true }
+    // Source maps can expose readable application source. Keep them off for
+    // browser production builds unless a server-controlled build environment
+    // explicitly opts in (never expose this toggle through VITE_ variables).
+    build: { outDir: 'dist', sourcemap: env.ENABLE_PRODUCTION_SOURCEMAPS === 'true' }
   }
 })
