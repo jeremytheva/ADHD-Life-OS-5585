@@ -15,10 +15,26 @@ test('resumed onboarding clamps its saved step, deduplicates completed steps, an
   assert.deepEqual(resumed.progress.completedSteps, ['welcome', 'roles'])
 })
 
+test('resumed onboarding clamps a negative or non-numeric saved step to the first screen', () => {
+  const resumed = normalizeOnboardingData({
+    progress: { currentStep: 'not a step', completedSteps: ['welcome', 'welcome'] }
+  })
+
+  assert.equal(resumed.progress.currentStep, 0)
+  assert.equal(resumed.progress.totalSteps, ONBOARDING_TOTAL_STEPS)
+  assert.deepEqual(resumed.progress.completedSteps, ['welcome'])
+})
+
 test('navigation retains core routes and hides optional modules that are not enabled', () => {
   const labels = getVisibleNavigationItems(['tasks', 'routines'], 'all').map(({ label }) => label)
 
   assert.deepEqual(labels, ['Today', 'Tasks', 'Routines', 'Projects', 'Settings'])
   assert.ok(!labels.includes('Housework'))
   assert.ok(!labels.includes('Brain Inbox'))
+})
+
+test('navigation keeps core routes available when every optional module is disabled', () => {
+  const labels = getVisibleNavigationItems([], 'all').map(({ label }) => label)
+
+  assert.deepEqual(labels, ['Today', 'Projects', 'Settings'])
 })
